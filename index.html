@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Roomba</title>
+
+<link href="css/bootstrap.css" rel="stylesheet"/>
+
+
+<style>
+    td {
+        width: 50px;
+        height: 50px;
+        background-color: cadetblue;
+        border: 1px solid white;
+    }
+
+    .dirty {
+        background-color: darkgoldenrod;
+    }
+
+    .cleaned {
+        background-color: greenyellow;
+    }
+
+
+    body {
+        color: #333;
+    }   
+
+    .robot {
+        width: 40px;
+    }
+    .tabImage {
+        width: 150px;
+    }
+
+    .banner {
+        height: 200px;
+        background-color: #000;
+        background-image: url("images/roomba.jpg");
+        background-repeat: no-repeat;
+    }
+
+    .tablets {
+        border: 1px solid #BBB;
+        border-radius: 50px;
+        margin: 30px;
+        min-height: 320px;
+    }
+
+    .badge-success {
+        background-color:lawngreen !important;
+    }
+
+
+</style>
+</head>
+<body>
+    
+<div class="banner">
+
+</div>
+<br/>
+<br/>
+
+<div class="container">
+<h1>Welcome !</h1>
+<br/>
+
+<h3>Choose an option below</h3>
+<p>I use two methods to clean tiles:</p>
+
+    <div class="row">    
+        <div class="col-md-5 tablets" >
+            <div>
+                <img src="images/parrot.png" alt="natural" class="tabImage"/>
+            </div>
+            <div>
+                <a href="natural.html"><h3>Natural Method </h3></a> I go to the nearest tile row by row, and save battery on unnecesary moves by going to the next rwo once the current is cleaned. Using an 8 x 8 tiled floor.
+            </div>
+        </div>
+            
+        <div class="col-md-5 tablets" >
+            <div>
+                <img src="images/support.png" alt="predictive" class="tabImage"/>
+            </div>
+            <div>
+                <a href="predictive.html"><h3>Predictive Method <small class="badge badge-success">More efficient</small> </h3></a> I first think and decide on a path then walk that path in the order that use the least moves. This, however, consumes quite some CPU power because of the many combinations available, so for this example, I am showing you a 5 x 5 tiled floor.
+            </div>
+        </div>
+        
+        
+    </div>
+</div>
+</body>
+
+</html>

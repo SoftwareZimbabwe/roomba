@@ -1,0 +1,11 @@
+{
+  "name": "roomba",
+  "version": "1.0.0",
+  "description": "",
+  "main": "testJS.js",
+  "scripts": {
+    "test": "exec testJS.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

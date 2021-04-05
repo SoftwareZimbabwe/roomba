@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Roomba</title>
+
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/jquery-ui.min.js"></script>
+
+    <link href="css/bootstrap.css" rel="stylesheet" />
+
+    <style>
+        td {
+            width: 50px;
+            height: 50px;
+            background-color: cadetblue;
+            border: 1px solid white;
+        }
+
+        .dirty {
+            background-color: darkgoldenrod;
+        }
+
+        .cleaned {
+            background-color: greenyellow;
+        }
+
+
+        body {
+            color: #333;
+        }
+
+        .robot {
+            width: 40px;
+        }
+
+        .icon {
+            width: 40px;
+        }
+
+        #runButton {
+            margin-left: 30px;
+        }
+
+        .banner {
+            height: 200px;
+            background-color: #000;
+            background-image: url("images/roomba.jpg");
+            background-repeat: no-repeat;
+        }
+
+        .hometext,
+        .hometext:visited {
+            position: relative;
+            font-weight: bold;
+            color: white;
+            margin-top: 30px;
+            margin-right: 30px;
+        }
+
+        .hometext:hover {
+            text-decoration: none;
+            color: yellow;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="banner">
+        <h2><a class="hometext pull-right" href="index.html">Home</a></h2>
+    </div>
+
+    <div class="container">
+
+
+        <br />
+
+        <div>
+            <button id="runButton" type="button" class="btn btn-info"><img src="images/robot.png" class="icon"
+                    alt="I'm the cleaner!"> Start Cleaning</button>
+        </div>
+
+        <br />
+        <br />
+
+        <div class="row">
+            <div id="tableContainer" class="col-md-3">
+
+            </div>
+
+            <div class="col-">
+                <p>
+                    <span id="startTime"></span><br />
+                    <span id="endTime"></span></br>
+
+                    <span id="moves"></span></br>
+                    <span id="saved"></span></br>
+                    <span id="done"></span></br>
+                    <span id="points"></span>
+
+
+                </p>
+            </div>
+
+        </div>
+
+        <div><br /><strong>Dirty Tiles:</strong> <span id="listOfNumbers"></span></div>
+
+        <h1>Other Alternative Paths Scanned</h1>
+        <p id="listOfPaths"></p>
+
+    </div>
+
+</body>
+
+<script type="text/javascript">
+
+    const TOTAL_ROWS = 5;
+    const TOTAL_COLUMNS = 5;
+    const TOTAL_TILES = TOTAL_ROWS * TOTAL_COLUMNS;
+    const TOTAL_SPOILT = 12;
+    const DIRTY_TILE_RATE = Math.floor(TOTAL_TILES / TOTAL_SPOILT);
+    const START_ROW = TOTAL_ROWS - 1;
+    const START_COLUMN = 0;
+
+    const DIRECTION_TOP = "top";
+    const DIRECTION_RIGHT = "right";
+    const DIRECTION_BOTTOM = "bottom";
+    const DIRECTION_LEFT = "left";
+
+    var dirtyTiles = new Array();
+    var table;
+
+    var possiblePaths = new Array();
+
+    //somevaribales
+    var cleanedTiles = new Array();
+    var maxMoves = 0;
+    var currentRowId = 7
+    var currentColId = 0;
+    var startCell = undefined;
+    var endCell = undefined;
+    var iteration = 1;
+
+    var shortestPathSoFar;
+    var discardedCombinations = 0;
+    var cyclesCompleted = 0;
+    var firstDirtyInstance = 0;
+
+    var setup = false;
+
+    function spoilCells(num = TOTAL_SPOILT) {
+
+        for (var i = 1; i <= TOTAL_SPOILT; i++) {
+
+            var tileToSpoil = getRandomInt(0, TOTAL_TILES - 1);
+
+            var rowId = Math.floor(tileToSpoil / TOTAL_ROWS);
+            var colId = tileToSpoil % TOTAL_COLUMNS;
+            cell = table.rows[rowId].cells[colId];
+
+            cell.classList.add("dirty");
+
+        }
+
+        dirtyTiles.sort(function (a, b) { return a - b })
+
+        jQuery("#listOfNumbers")[0].innerText = dirtyTiles.toString();
+
+    }
+
+    function getRandomInt(min, max) {
+
+        var random;
+        min = Math.ceil(min);
+        max = Math.floor(max);
+
+        random = Math.floor(Math.random() * (max - min + 1)) + min;
+
+        if (dirtyTiles.includes(random)) {
+            return getRandomInt(min, max);
+        } else {
+            dirtyTiles.push(random);
+            return random;
+        }
+    }
+
+
+    function setDelay(time, i) {
+        setTimeout(function () {
+            console.log(i);
+        }, time * i);
+    }
+
+
+    function isInSameRow(firstNumber, secondNumber) {
+
+        var floor = Math.floor(firstNumber / 8) * 8;
+        var ceiling = floor + 7;
+
+        if (secondNumber >= floor && secondNumber <= ceiling) {
+            return true;
+        }
+
+        return false;
+
+    }
+    function restOfColumnHasDirtyCells(currentCell) {
+        let remainingCells = new Array();
+
+        for (let i = currentCell; i >= 0; i = i - TOTAL_COLUMNS) {
+
+            remainingCells.push(i);
+
+        }
+
+        nextCellExists = remainingCells.filter(value => dirtyTiles.includes(value));
+
+        return nextCellExists.length;
+
+    }
+
+    function rowHasDirtyCells(currentCell) {
+
+        nextCellExists = dirtyTiles.find(element => element >= currentCell && isInSameRow(currentCell, element));
+        prevCellExists = dirtyTiles.find(element => element <= currentCell && isInSameRow(currentCell, element));
+
+        return nextCellExists || prevCellExists;
+
+    }
+
+    function cleanThisTile(rowId, colId) {
+
+        cell = table.rows[rowId].cells[colId];
+        cell.classList.remove("dirty");
+        cell.classList.add("cleaned");
+
+    }
+
+    function getCurrentCellPosition(row, col) {
+        return (row * TOTAL_COLUMNS) + col;
+    }
+
+    function walkShortestPath(shortestPath = null, tilePosition = null) {
+
+
+        setTimeout(function () {
+
+
+            if (shortestPath == null) {
+                shortestPath = possiblePaths[0];
+            }
+
+            if (tilePosition == null) {
+                tilePosition = 0;
+            }
+            let tile = shortestPath[tilePosition];
+
+            let iteration = tilePosition;
+
+            let currentRowId = Math.floor(tile / TOTAL_ROWS);
+            let currentColId = tile % TOTAL_COLUMNS;
+
+            //move roomba
+            let roomba = jQuery(".robot")[0];
+            const roombaHTML = roomba.outerHTML.toString();
+            roomba.outerHTML = "";
+            jQuery(table.rows[currentRowId].cells[currentColId])[0].innerHTML = roombaHTML;
+
+            if (dirtyTiles.includes(tile)) {
+                cleanThisTile(currentRowId, currentColId);
+                cleanedTiles.push(tile);
+                jQuery("#points").html("<strong>Tiles Cleaned: </strong>" + cleanedTiles.length + " <strong>Points Earned: </strong>" + (cleanedTiles.length * 250));
+            }
+
+            jQuery("#moves").html("<strong>Moves: </strong>" + iteration + ", <string>Battery Units Used: </string>" + iteration * 10 + " / 1000 units");
+
+            if (tilePosition < shortestPath.length - 1) {
+                walkShortestPath(shortestPath, tilePosition + 1)
+            }
+
+        }, 1000)
+
+
+    }
+
+    async function findShortestPath(startTile = null, travelDetails = null, travelled = "") {
+
+        //first time running
+        if (travelDetails == null) {
+            console.log("dirtyTiles: " + dirtyTiles.toString());
+            startTile = getCurrentCellPosition(START_ROW, START_COLUMN);
+
+            travelDetails = {};
+            travelDetails["visited"] = new Array();
+        }
+
+        //FIRST: update travelDetails
+        //travelDetails["visited"].push(startTile);
+        //console.log(travelDetails["visited"].toString());
+        travelled += (startTile + "::");
+        console.log(travelled);
+
+        //SECOND: count dirty tiles traversed
+        //let dirtyPassedThrough = travelDetails["visited"].filter(value => dirtyTiles.includes(value));
+        //let travelledArray = travelled.split("::");
+
+        let travelledArray = travelled.replace(new RegExp(`\:\:$`), "").trim().split('::').map(el => {
+            let n = Number(el);
+            return isNaN(n) ? el : n;
+        });
+
+        let dirtyPassedThrough = travelledArray.filter(value => dirtyTiles.includes(value));
+
+        let neighbors = getNeighbors(startTile);
+
+        //unnecessary cause we already have a shorter path
+        if ((shortestPathSoFar != 0 && travelledArray.length >= (shortestPathSoFar * 1))
+            || travelledArray.length / TOTAL_TILES >= 1
+            //|| travelledArray.length > 28
+            //|| travelledArray.length >= TOTAL_COLUMNS && dirtyPassedThrough < DIRTY_TILE_RATE //averageinstance of dirty tile
+            //|| travelledArray.length >= 2 * TOTAL_SPOILT //moves shouldn't be 3 times dirty tiles
+        ) {
+
+            discardedCombinations++;
+            console.log("skipped combination: " + travelledArray.toString());
+
+        }
+        //possible destination
+        else if (dirtyTiles.includes(startTile) && dirtyPassedThrough.length >= TOTAL_SPOILT) {
+            //we have traversed all dirty nodes, and this is a possible path. Stop further processing, keep this path for comparison
+
+            //possiblePaths.push(travelDetails);
+
+            //Add home run
+            addHomeRun(travelledArray);
+
+            possiblePaths.push(travelledArray);
+
+            shortestPathSoFar = travelledArray.length;
+
+            cyclesCompleted++;
+
+        } else
+
+        //if (!possiblePaths.length) 
+        //if(!pathAlreadyUsed(travelledArray) && possiblePaths.length < 20)
+
+        {
+
+            if (neighbors[DIRECTION_TOP] != null && !travelledArray.includes(neighbors[DIRECTION_TOP])) {
+                let skip = false;
+                let neighborRow = Math.floor(neighbors[DIRECTION_TOP] / TOTAL_COLUMNS);
+
+                if (neighborRow == 0 && !rowHasDirtyCells(neighbors[DIRECTION_TOP])) { //check if that row has any valid 
+                    skip = true;
+                }
+
+                if (!restOfColumnHasDirtyCells(neighbors[DIRECTION_TOP])) {
+                    skip = true;
+                }
+
+                if (!skip) {
+                    findShortestPath(neighbors[DIRECTION_TOP], [], travelled);
+                } else {
+                    discardedCombinations++;
+                }
+            }
+
+
+            if (neighbors[DIRECTION_RIGHT] != null && !travelledArray.includes(neighbors[DIRECTION_RIGHT]) && startTile != getCurrentCellPosition(START_ROW, START_COLUMN)) {
+                findShortestPath(neighbors[DIRECTION_RIGHT], [], travelled);
+            }
+
+
+            if (neighbors[DIRECTION_BOTTOM] != null && !travelledArray.includes(neighbors[DIRECTION_BOTTOM])) {
+                findShortestPath(neighbors[DIRECTION_BOTTOM], [], travelled);
+            }
+
+
+            if (neighbors[DIRECTION_LEFT] != null && !travelledArray.includes(neighbors[DIRECTION_LEFT])) {
+                findShortestPath(neighbors[DIRECTION_LEFT], [], travelled);
+            }
+
+        }
+
+
+    }
+
+    function pathAlreadyUsed(travelledArray) {
+
+        let result = false;
+
+        possiblePaths.forEach(path => {
+
+            if (travelledArray.filter(value => path.includes(value)).length > travelledArray.length * 0.7)
+                result = true;
+            return result;
+
+        });
+
+        return result;
+
+    }
+
+    function addHomeRun(travelledArray = null) {
+
+        if (travelledArray != null) {
+
+            lastTile = travelledArray[travelledArray.length - 1];
+            var currentRowId = Math.floor(lastTile / TOTAL_ROWS);
+            var currentColId = lastTile % TOTAL_COLUMNS;
+
+            //move down
+            for (let i = currentRowId; i < TOTAL_ROWS - 1; i++) {
+                let newRowId = i + 1; //to get to same point next row
+                let newColumnId = currentColId;
+                let newTile = (newRowId * TOTAL_COLUMNS) + newColumnId;
+                travelledArray.push(newTile);
+                currentRowId = newRowId;
+            }
+
+            //move left
+            for (let i = currentColId; i > 0; i--) {
+                let newColumnId = i - 1; //to get to same point next row
+                let newRowId = currentRowId;
+                let newTile = (newRowId * TOTAL_ROWS) + newColumnId;
+                travelledArray.push(newTile);
+            }
+
+        }
+
+        return travelledArray;
+
+    }
+
+    function getNeighbors(startTile) {
+
+        let neighbors = new Array();
+
+        neighbors[DIRECTION_TOP] = getSingleNeighbor(startTile, DIRECTION_TOP);
+        neighbors[DIRECTION_RIGHT] = getSingleNeighbor(startTile, DIRECTION_RIGHT);
+        neighbors[DIRECTION_BOTTOM] = getSingleNeighbor(startTile, DIRECTION_BOTTOM);
+        neighbors[DIRECTION_LEFT] = getSingleNeighbor(startTile, DIRECTION_LEFT);
+
+        return neighbors;
+
+    }
+
+    function getSingleNeighbor(currentTile, direction, totalTiles = TOTAL_TILES) {
+        let newTileNumber;
+        let colId = currentTile % TOTAL_ROWS;
+        let rowId = Math.floor(currentTile / TOTAL_ROWS);
+
+        switch (direction) {
+            case DIRECTION_TOP:
+
+                if (rowId == 0) {
+                    newTileNumber = -1;
+                } else {
+                    newTileNumber = currentTile - TOTAL_COLUMNS;
+                }
+
+                break;
+            case DIRECTION_RIGHT:
+
+                if (colId == TOTAL_COLUMNS - 1) {
+                    newTileNumber = -1;
+                } else {
+                    newTileNumber = currentTile + 1;
+                }
+
+                break;
+            case DIRECTION_BOTTOM:
+
+                if (rowId == TOTAL_ROWS - 1) {
+                    newTileNumber = -1;
+                } else {
+                    newTileNumber = currentTile + TOTAL_ROWS;
+                }
+
+                break;
+            case DIRECTION_LEFT:
+
+                if (colId == 0) {
+                    newTileNumber = -1;
+                } else {
+                    newTileNumber = currentTile - 1;
+                }
+
+                break;
+            default:
+                newTileNumber - 1;
+                break;
+        }
+
+        if (newTileNumber < 0 || newTileNumber > (totalTiles - 1)) {
+            return null;
+        } else {
+            return newTileNumber;
+        }
+
+    }
+
+    function createTable() {
+        let table = document.createElement("table");
+        table.id = "roombaTable";
+
+        for (i = 1; i <= TOTAL_ROWS; i++) {
+            let tr = document.createElement("tr");
+            for (j = 1; j <= TOTAL_COLUMNS; j++) {
+                let td = document.createElement("td");
+                tr.appendChild(td);
+            }
+            table.appendChild(tr);
+        }
+
+
+        let roombaImage = document.createElement("img");
+        roombaImage.src = "images/robot.png";
+        roombaImage.classList.add("robot");
+        roombaImage.alt = "I'm the cleaner!";
+        table.rows[START_ROW].cells[START_COLUMN].appendChild(roombaImage);
+
+        jQuery("#tableContainer")[0].innerHTML = "";
+        jQuery("#tableContainer")[0].append(table);
+
+    }
+
+    function performSetup() {
+        iteration = 1;
+        createTable();
+        table = document.getElementById("roombaTable");
+        shortestPathSoFar = 0;
+
+        spoilCells();
+    }
+
+    jQuery(document).ready(function () {
+
+        maxMoves = 0;
+        currentRowId = START_ROW
+        currentColId = START_COLUMN;
+
+        performSetup();
+        setup = false;
+
+    });
+
+    jQuery("#runButton").click(function () {
+
+
+        if (setup) {
+
+            window.document.location.reload();
+
+        }
+
+        setup = true;
+        jQuery(this).text("Restart");
+
+        var dateObj = new Date();
+        //jQuery("#startTime").text("StartTime: " + dateObj.getHours() + ":" + dateObj.getMinutes() + ":" + dateObj.getSeconds() + ":" +dateObj.getMilliseconds())
+        findShortestPath();
+
+        possiblePaths.sort(function (a, b) {
+            return a.length - b.length
+        })
+
+        possiblePaths.forEach(element => {
+
+            let paragraph = document.createElement("p");
+            let br = document.createElement("br");
+            let node = document.createElement("span");
+            node.innerHTML = "<strong>" + (element.length - 1) + " tiles moved: </strong>" + element.toString();
+
+            paragraph.appendChild(node);
+            paragraph.appendChild(br);
+
+            jQuery("#listOfPaths")[0].append(paragraph);
+
+        });
+
+        //cleanTiles();
+        walkShortestPath()
+
+        dateObj = new Date();
+        //jQuery("#endTime").text("EndTime: " + dateObj.getHours() + ":" + dateObj.getMinutes() + ":" + dateObj.getSeconds() + ":" + dateObj.getMilliseconds())
+        jQuery("#done").text("Cycles Done: " + cyclesCompleted)
+        jQuery("#saved").text("Extra cycles saved: " + discardedCombinations)
+    })
+</script>
+
+</html>

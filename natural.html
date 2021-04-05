@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Roomba</title>
+
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/jquery-ui.min.js"></script>
+    <link href="css/bootstrap.css" rel="stylesheet" />
+
+
+    <style>
+        td {
+            width: 50px;
+            height: 50px;
+            background-color: cadetblue;
+            border: 1px solid white;
+        }
+
+        .dirty {
+            background-color: darkgoldenrod;
+        }
+
+        .cleaned {
+            background-color: greenyellow;
+        }
+
+
+        body {
+            color: #333;
+        }
+
+        .robot {
+            width: 40px;
+        }
+
+        .icon {
+            width: 40px;
+        }
+
+        .banner {
+            height: 200px;
+            background-color: #000;
+            background-image: url("images/roomba.jpg");
+            background-repeat: no-repeat;
+        }
+
+        .hometext,
+        .hometext:visited {
+            position: relative;
+            font-weight: bold;
+            color: white;
+            margin-top: 30px;
+            margin-right: 30px;
+        }
+
+        .hometext:hover {
+            text-decoration: none;
+            color: yellow;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="banner">
+        <h2><a class="hometext pull-right" href="index.html">Home</a></h2>
+    </div>
+
+    <div class="container">
+        <br />
+
+        <div>
+            <button id="runButton" type="button" class="btn btn-info" style="margin-left: 30px;"><img
+                    src="images/robot.png" class="icon" alt="I'm the cleaner!"> Start Cleaning</button>
+            <br />
+            <br />
+        </div>
+
+        <table id="roombaTable">
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td><img class="robot" src="images/robot.png" alt="I'm the cleaner!" /></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+        </table>
+
+        <div><br /><strong>Dirty Tiles:</strong> <span id="listOfNumbers"></span></div>
+
+        <div id="stats">
+            <span id="moves"></span><br /><br />
+            <span id="points"></span>
+        </div>
+    </div>
+
+</body>
+
+<script type="text/javascript">
+
+    var dirtyTiles = new Array();
+    var table = document.getElementById("roombaTable");
+
+    //somevaribales
+    var cleanedTiles = new Array();
+    var maxMoves = 0;
+    var currentRowId = 7
+    var currentColId = 0;
+    var startCell = undefined;
+    var endCell = undefined;
+    var iteration = 1;
+
+    var totalMoves = 0;
+
+    var setup = false;
+    var goingHome = false;
+
+    function spoilCells(num = 18) {
+
+        for (var i = 1; i <= 18; i++) {
+
+            var tileToSpoil = getRandomInt(0, 63);
+
+            var rowId = Math.floor(tileToSpoil / 8);
+            var colId = tileToSpoil % 8;
+            cell = table.rows[rowId].cells[colId];
+
+            cell.classList.add("dirty");
+
+        }
+
+        dirtyTiles.sort(function (a, b) { return a - b })
+
+        jQuery("#listOfNumbers")[0].innerText = dirtyTiles.toString();
+
+    }
+
+    function getRandomInt(min, max) {
+
+        var random;
+        min = Math.ceil(min);
+        max = Math.floor(max);
+
+        random = Math.floor(Math.random() * (max - min + 1)) + min;
+
+        if (dirtyTiles.includes(random)) {
+            return getRandomInt(min, max);
+        } else {
+            dirtyTiles.push(random);
+            return random;
+        }
+    }
+
+    function cleanTiles(startCell = null) {
+
+        if (startCell == null) {
+            startCell = getCurrentCellPosition(currentRowId, currentColId);
+        }
+
+        //endCell = startCell;
+
+        setTimeout(function () {
+
+            currentRowId = Math.floor(startCell / 8);
+            currentColId = startCell % 8;
+
+            if (dirtyTiles.includes(startCell)) {
+                cleanThisTile(currentRowId, currentColId);
+                cleanedTiles.push(startCell);
+                jQuery("#points").html("<strong>Tiles Cleaned: </strong>" + cleanedTiles.length + " <strong>Points Earned: </strong>" + (cleanedTiles.length * 250));
+
+            }
+
+            if (!goingHome) {
+                cleanTiles(moveRoomba(startCell));
+            }
+
+        }, 1000);
+
+
+    }
+
+    function setDelay(time, i) {
+        setTimeout(function () {
+            console.log(i);
+        }, time * i);
+    }
+
+    function goToNextRow(currentCell) {
+        //return currentCell - 8;
+    }
+
+    function isInSameRow(firstNumber, secondNumber) {
+
+        var floor = Math.floor(firstNumber / 8) * 8;
+        var ceiling = floor + 7;
+
+        if (secondNumber >= floor && secondNumber <= ceiling) {
+            return true;
+        }
+
+        return false;
+
+    }
+
+    function moveRoomba(currentCell) {
+        var currentRowId = Math.floor(currentCell / 8);
+        var currentColId = currentCell % 8;
+        let roomba = jQuery(".robot")[0];
+
+        //check adjuscent cells, same row
+        nextCellExists = dirtyTiles.filter(element => element > currentCell && isInSameRow(currentCell, element));
+        prevCellExists = dirtyTiles.filter(element => element < currentCell && isInSameRow(currentCell, element));
+
+        if (nextCellExists && nextCellExists.filter(value => !cleanedTiles.includes(value)).length && (!prevCellExists.filter(value => !cleanedTiles.includes(value)).length || columnIsCloserToRight(currentCell))) {
+            //move to that cell
+            currentColId = currentColId + 1;
+            const roombaHTML = roomba.outerHTML.toString();
+            roomba.outerHTML = "";
+            jQuery(table.rows[currentRowId].cells[currentColId])[0].innerHTML = roombaHTML;
+
+        } else if (prevCellExists && prevCellExists.filter(value => !cleanedTiles.includes(value)).length) {
+            //move to that cell
+            currentColId = currentColId - 1;
+            const roombaHTML = roomba.outerHTML.toString();
+            roomba.outerHTML = "";
+            jQuery(table.rows[currentRowId].cells[currentColId])[0].innerHTML = roombaHTML;
+
+        } else {
+            //move to next row or go home
+            if (currentRowId == 0) {
+
+                return goHome(currentCell);
+
+            } else {
+                currentRowId = currentRowId - 1;
+                const roombaHTML = roomba.outerHTML.toString();
+                roomba.outerHTML = "";
+                jQuery(table.rows[currentRowId].cells[currentColId])[0].innerHTML = roombaHTML;
+
+            }
+
+
+        }
+
+        let newCell = (currentRowId * 8) + currentColId;
+        moveBattery();
+
+        return newCell;
+
+    }
+
+    function moveBattery() {
+        totalMoves++;
+        jQuery("#moves").html("<strong>Moves: </strong>" + totalMoves + " <strong>Battery Used: </strong>" + 10 * totalMoves + " / 1000 <br/> <strong>Battery Saved: </strong>" + (700 - (10 * totalMoves) > 0 ? 700 - (10 * totalMoves) : 0) + " <em>(out of 700 when walking all 64 tiles)</em>");
+
+    }
+
+    function columnIsCloserToRight(currentCell) {
+        let col = currentCell % 8;
+
+        if (col < 4) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function goHome(currentCell) {
+
+        goingHome = true;
+        var travelledArray = new Array();
+
+        lastTile = currentCell;
+        var currentRowId = Math.floor(lastTile / 8);
+        var currentColId = lastTile % 8;
+
+        //move down
+        for (let i = currentRowId; i < 7; i++) {
+            let newRowId = i + 1; //to get to same point next row
+            let newColumnId = currentColId;
+            let newTile = (newRowId * 8) + newColumnId;
+            travelledArray.push(newTile);
+            currentRowId = newRowId;
+        }
+
+        //move left
+        for (let i = currentColId; i > 0; i--) {
+            let newColumnId = i - 1; //to get to same point next row
+            let newRowId = currentRowId;
+            let newTile = (newRowId * 8) + newColumnId;
+            travelledArray.push(newTile);
+        }
+
+        let i = 0;
+
+        travelledArray.forEach(tile => {
+            i++;
+
+            setTimeout(() => {
+
+                currentRowId = Math.floor(tile / 8);
+                currentColId = tile % 8;
+
+                let roomba = jQuery(".robot")[0];
+                const roombaHTML = roomba.outerHTML.toString();
+                roomba.outerHTML = "";
+                jQuery(table.rows[currentRowId].cells[currentColId])[0].innerHTML = roombaHTML;
+                moveBattery();
+
+
+            }, 1000 * i);
+
+        });
+
+    }
+
+    /*function moveRoomba(currentCell, toCell) {
+        var currentColId = currentCell%8;
+
+        var toRowId = Math.floor(toCell/8);
+        var toColId = toCell%8;
+
+        for(let i = currentColId; i<=toColId; i++ ) {
+            
+                let roomba = jQuery(".robot")[0];
+                const roombaHTML = roomba.outerHTML.toString();
+                roomba.outerHTML = "";
+                jQuery(table.rows[toRowId].cells[i])[0].innerHTML = roombaHTML;
+             
+        }
+
+    }*/
+
+
+    function cleanThisTile(rowId, colId) {
+
+        cell = table.rows[rowId].cells[colId];
+        cell.classList.remove("dirty");
+        cell.classList.add("cleaned");
+
+    }
+
+    function getCurrentCellPosition(row, col) {
+        return (row * 8) + col;
+    }
+
+    jQuery(document).ready(function () {
+
+        maxMoves = 0;
+        currentRowId = 7
+        currentColId = 0;
+        iteration = 1;
+
+        spoilCells();
+    });
+
+    jQuery("#runButton").click(function () {
+        if (setup) {
+
+            window.document.location.reload();
+
+        }
+        setup = true;
+        jQuery(this).text("Restart");
+        cleanTiles();
+    })
+</script>
+
+</html>
